@@ -33,6 +33,7 @@ from email.MIMEText import MIMEText
 import re
 import locale
 import random
+import zlib
 # kludge to get md5 hexdigest working on all python versions. Function
 # md5fun should be used only to get ascii like this
 # md5fun("kukkaisvoima").hexdigest()
@@ -85,6 +86,8 @@ gravatarsupport = True
 dateformat = "%F"
 # Show only first paragraph when showing many entries
 entrysummary = False
+# New in version 15
+shorturl = True
 
 # Language variables
 l_archives = 'Archives'
@@ -112,7 +115,7 @@ l_search = "Search"
 l_search2 = "No matches"
 # new in version 10
 l_recent_comments = "Recent comments"
-l_notify_comments= "Notify me of follow-up comments via email."
+l_notify_comments = "Notify me of follow-up comments via email."
 # new in version 11
 l_read_more = "<p>Continue reading...</p>"
 # new in version 12
@@ -123,7 +126,7 @@ l_toggle = "Click year to show months"
 from kukkaisvoima_settings import *
 
 # version
-version = '14'
+version = '15b3TA'
 
 # for date collisions
 dates = {}
@@ -276,6 +279,28 @@ def search(pattern, lines):
     return matchlines
 
 
+def genShortUrl(fileName):
+    # With crc32 collasions will happen. When they do, just update the
+    # fileName of the entry file manually. 0xffffffff is there to get
+    # unsigned numbers
+    num = (zlib.crc32(fileName) & 0xffffffff)
+    # convert num to base 62 for the short url
+    alp = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    base = len(alp)
+    buf = list()
+    while (num > 0):
+        buf.append(alp[num % base])
+        num /= base
+    buf.reverse()
+    return "".join(buf)
+
+
+def getFileFromShortUrl(surl):
+    shorturlindex = open(os.path.join(indexdir,'shorturl.index'), 'rb')
+    shorturls = pickle.load(shorturlindex)
+    shorturlindex.close()
+    return shorturls[surl]
+
 class Comment:
     urlre = re.compile('(http|https|ftp)://([A-Za-z0-9/:@_%~#=&\.\-\?\+]+)')
     def __init__(self, author, email, url, comment, subscribe):
@@ -425,6 +450,7 @@ def updateCommentList():
         entry = Entry(c[0], datadir)
         commentlist.append({"authorlink" : c[1].getAuthorLink(),
                             "file" : c[0],
+                            "shorturl" : genShortUrl(c[0]),
                             "num" : c[2],
                             "author" : c[1].author,
                             "subject" : entry.headline})
@@ -533,21 +559,33 @@ def handleIncomingComment(fs):
 class Entry:
     firstpre = re.compile("<p.*?(</p>|<p>)", re.DOTALL | re.IGNORECASE)
     whitespacere = re.compile("\s")
-    def __init__(self, fileName, datadir):
-        self.fileName = fileName
-        self.fullPath = os.path.join(datadir, fileName)
+    def __init__(self, requestUrl, datadir):
+        self.shorturl = False
+        if shorturl and (len(requestUrl) == 5 or len(requestUrl) == 6):
+            self.shorturl = requestUrl
+            self.fileName = getFileFromShortUrl(requestUrl)
+        elif requestUrl.endswith(".txt"):
+            self.fileName = requestUrl
+        else:
+            self.fileName = "%s.txt" % requestUrl
+        if shorturl and self.shorturl == False:
+            self.shorturl = genShortUrl(self.fileName)
+        self.fullPath = os.path.join(datadir, self.fileName)
         self.text = open(self.fullPath).readlines()
         self.text = [line for line in self.text if not line.startswith('#')]
         self.headline = self.text[0]
         self.text = self.text[1:]
         self.author = defaultauthor
         self.cat = ''
-        name, date, categories = fileName[:-4].split(':')
+        name, date, categories = self.fileName[:-4].split(':')
         self.cat = categories.split(',')
         self.date = generateDate(self.fullPath)
         self.comments = getComments(self.fileName)
-        self.url = "%s/%s" % (baseurl,
-                              quote_plus(self.fileName[:-4]))
+        if shorturl:
+            self.url = "%s/%s" % (baseurl, self.shorturl)
+        else:
+            self.url = "%s/%s" % (baseurl,
+                                  quote_plus(self.fileName[:-4]))
 
     def getFirstParagraph(self):
         # look for <p>
@@ -999,9 +1037,13 @@ def renderSidebarCommments():
         else:
             print "<ul>"
             for com in comlist:
+                if shorturl:
+                    entryurl = com["shorturl"]
+                else:
+                    entryurl = quote_plus(com["file"][:-4])
                 print "<li>%s on <a href=\"%s/%s#comment-%d\">%s</a>"\
-                    % (com["author"], baseurl,
-                       quote_plus(com["file"][:-4]), com["num"], com["subject"])
+                    % (com["author"], baseurl, entryurl,
+                       com["num"], com["subject"])
                 print "</li>"
             print "</ul>"
 
@@ -1362,6 +1404,14 @@ def main():
         index = open(os.path.join(indexdir,'main.index'), 'wb')
         pickle.dump(filelist, index)
         index.close()
+        # Pickle the shorturl index
+        shortdict = dict()
+        for f in filelist:
+            sfile = filelist[f]
+            shortdict[genShortUrl(sfile)] = sfile
+        shortindex = open(os.path.join(indexdir,'shorturl.index'), 'wb')
+        pickle.dump(shortdict, shortindex)
+        shortindex.close()
 
     feed = False
     if len(path) > 0 and path[len(path)-1] == 'feed':
@@ -1394,7 +1444,7 @@ def main():
                 print redirect
                 return
             else:
-                entries = ent.getOne("%s.txt" % unquote_plus(path[0]))
+                entries = ent.getOne(unquote_plus(path[0]))
         except:
             entries = ent.getMany(page)
     elif len(path) == 1 and deletecomment:
@@ -1414,7 +1464,7 @@ def main():
         print 'Location: %s/%s#comments\n' % (baseurl, name)
     elif len(path) == 1:
         try:
-            entries = ent.getOne("%s.txt" % unquote_plus(path[0]))
+            entries = ent.getOne(unquote_plus(path[0]))
         except:
             entries = ent.getMany(page)
     else:
