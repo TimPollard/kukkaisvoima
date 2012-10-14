@@ -295,10 +295,13 @@ def genShortUrl(fileName):
     return "".join(buf)
 
 
+shorturls = dict()
 def getFileFromShortUrl(surl):
-    shorturlindex = open(os.path.join(indexdir,'shorturl.index'), 'rb')
-    shorturls = pickle.load(shorturlindex)
-    shorturlindex.close()
+    global shorturls
+    if len(shorturls) == 0:
+        shorturlindex = open(os.path.join(indexdir,'shorturl.index'), 'rb')
+        shorturls = pickle.load(shorturlindex)
+        shorturlindex.close()
     return shorturls[surl]
 
 class Comment:
