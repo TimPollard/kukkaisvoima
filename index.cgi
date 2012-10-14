@@ -1271,6 +1271,18 @@ def renderFeed(entries, path, categorieslist):
     print "</channel>"
     print "</rss>"
 
+
+def generateShortUrlIndex(filelist):
+    # Pickle the shorturl index
+    shortdict = dict()
+    for f in filelist:
+        sfile = filelist[f]
+        shortdict[genShortUrl(sfile)] = sfile
+    shortindex = open(os.path.join(indexdir,'shorturl.index'), 'wb')
+    pickle.dump(shortdict, shortindex)
+    shortindex.close()
+
+
 # main program starts here
 def main():
     path = ['']
@@ -1344,6 +1356,10 @@ def main():
     except:
         pass
 
+    if shorturl and \
+            os.path.exists(os.path.join(indexdir,'shorturl.index')) is False:
+        generateShortUrlIndex(filelist)
+
     # generate categorieslist and archivelist
     categorieslist = {}
     archivelist = {}
@@ -1408,13 +1424,7 @@ def main():
         pickle.dump(filelist, index)
         index.close()
         # Pickle the shorturl index
-        shortdict = dict()
-        for f in filelist:
-            sfile = filelist[f]
-            shortdict[genShortUrl(sfile)] = sfile
-        shortindex = open(os.path.join(indexdir,'shorturl.index'), 'wb')
-        pickle.dump(shortdict, shortindex)
-        shortindex.close()
+        generateShortUrlIndex(filelist)
 
     feed = False
     if len(path) > 0 and path[len(path)-1] == 'feed':
