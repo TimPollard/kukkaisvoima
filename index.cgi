@@ -418,16 +418,31 @@ def unsubscribeComments(filename, unsubscribe_id):
 def getCommentList():
     """Gets list of comments from the comment index"""
     commentlist = list()
+    updated = False
 
     # generate list of comments if it does not exist
     if os.path.exists(os.path.join(indexdir,'recent_comments.index')) is False:
         updateCommentList()
+        updated = True
     try:
         comindex = open(os.path.join(indexdir,'recent_comments.index'), 'rb')
         commentlist = pickle.load(comindex)
         comindex.close()
     except:
         pass
+
+    # For shorturls force recent_comments.index update if there is no
+    # shorturl generated for comment
+    if not updated and shorturl and \
+            len(commentlist) > 0 and commentlist[0].has_key("shorturl") is False:
+        try:
+            updateCommentList()
+            comindex = open(os.path.join(indexdir,'recent_comments.index'), 'rb')
+            commentlist = pickle.load(comindex)
+            comindex.close()
+        except:
+            pass
+
     return commentlist
 
 
