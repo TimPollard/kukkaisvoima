@@ -579,7 +579,7 @@ class Entry:
     whitespacere = re.compile("\s")
     def __init__(self, requestUrl, datadir):
         self.shorturl = False
-        if shorturl and (len(requestUrl) == 5 or len(requestUrl) == 6):
+        if shorturl and (len(requestUrl) > 1 and len(requestUrl) < 7):
             self.shorturl = requestUrl
             self.fileName = getFileFromShortUrl(requestUrl)
         elif requestUrl.endswith(".txt"):
