@@ -3,7 +3,7 @@
 
 Kukkaisvoima a lightweight weblog system.
 
-Copyright (C) 2006-2012 Petteri Klemola
+Copyright (C) 2006-2013 Petteri Klemola
 
 Kukkaisvoima is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License version 3
@@ -126,7 +126,7 @@ l_toggle = "Click year to show months"
 from kukkaisvoima_settings import *
 
 # version
-version = '15b3TA'
+version = '15'
 
 # for date collisions
 dates = {}
