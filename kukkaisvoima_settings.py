@@ -55,6 +55,8 @@ passwd = 'password'
 dateformat = "%F %T"
 # Show only first paragraph when showing many entries
 entrysummary = False
+# New in version 15
+shorturl = True
 
 # Language variables
 l_archives = 'Archives'
@@ -80,3 +82,10 @@ l_do_you_delete = 'Your about to delete comment this, are you sure you want to t
 # new in version 8
 l_search = "Search"
 l_search2 = "No matches"
+# new in version 10
+l_recent_comments = "Recent comments"
+l_notify_comments = "Notify me of follow-up comments via email."
+# new in version 11
+l_read_more = "<p>Continue reading...</p>"
+# new in version 12
+l_toggle = "Click year to show months"
