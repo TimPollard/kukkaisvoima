@@ -126,7 +126,7 @@ l_toggle = "Click year to show months"
 from kukkaisvoima_settings import *
 
 # version
-version = '15'
+version = '16speedtest'
 
 # for date collisions
 dates = {}
@@ -178,6 +178,46 @@ def generateDate(fileName):
             date += timedelta(seconds=1)
     dates[date] = fileName
     return date
+
+def cmp_entry_names(e1, e2):
+    y1, m1, d1 = e1.split(":")[1].split("-")
+    y2, m2, d2 = e2.split(":")[1].split("-")
+
+    if y1 < y2:
+        return -1
+    elif y1 > y2:
+        return 1
+
+    m1 = int(m1)
+    m2 = int(m2)
+    if m1 < m2:
+        return -1
+    elif m1 > m2:
+        return 1
+
+    d1 = int(d1)
+    d2 = int(d2)
+    if d1 < d2:
+        return -1
+    elif d1 > d2:
+        return 1
+
+    date1 = generateDate(e1)
+    date2 = generateDate(e2)
+    if date1 < date2:
+        return -1
+    elif date1 > date2:
+        return 1
+    return 0
+
+def sorted_index_dump(index_as_list, index_file):
+    """ Sorts and dumps list so that there is no need to sort it when
+    it is loaded."""
+    index_as_list.sort(cmp_entry_names)
+    index_as_list.reverse()
+    index = open(os.path.join(indexdir, index_file), 'wb')
+    pickle.dump(index_as_list, index)
+    index.close()
 
 def sendEmail(to, subject, message):
     msg = MIMEText(_text=wrapEmail(message), _charset='%s' % encoding)
@@ -666,19 +706,16 @@ class Entries:
         indexindexfile.close()
         # load the files
         ents = list()
-        swd = indexindex.keys()
-        swd.sort()
-        swd.reverse()
         if pagenumber == -1: # no limit
             pass
         elif pagenumber > 0:
             sindex = numberofentriesperpage*pagenumber
             eindex = (numberofentriesperpage*pagenumber)+numberofentriesperpage
-            swd = swd[sindex:eindex]
+            indexindex = indexindex[sindex:eindex]
         else:
-            swd = swd[:numberofentriesperpage]
-        for key in swd:
-            ents.append(Entry(indexindex[key], datadir))
+            indexindex = indexindex[:numberofentriesperpage]
+        for key in indexindex:
+            ents.append(Entry(key, datadir))
         return ents
 
 def renderHtmlFooter():
@@ -1290,8 +1327,7 @@ def renderFeed(entries, path, categorieslist):
 def generateShortUrlIndex(filelist):
     # Pickle the shorturl index
     shortdict = dict()
-    for f in filelist:
-        sfile = filelist[f]
+    for sfile in filelist:
         shortdict[genShortUrl(sfile)] = sfile
     shortindex = open(os.path.join(indexdir,'shorturl.index'), 'wb')
     pickle.dump(shortdict, shortindex)
@@ -1357,17 +1393,14 @@ def main():
             continue
         entries.append(entry)
 
-    filelist = {}
-    for file in entries:
-        filelist[generateDate(os.path.join(datadir,file))] = file
+    filelist = list(entries)
 
     # Read the main index
     indexold = list()
     try:
         indexoldfile = open(os.path.join(indexdir,'main.index'), 'rb')
-        indexoldd = pickle.load(indexoldfile)
+        indexold = pickle.load(indexoldfile)
         indexoldfile.close()
-        indexold = indexoldd.values()
     except:
         pass
 
@@ -1378,24 +1411,19 @@ def main():
     # generate categorieslist and archivelist
     categorieslist = {}
     archivelist = {}
-    for file in filelist:
-        name, date, categories = filelist[file][:-4].split(':')
+    for sfile in filelist:
+        name, date, categories = sfile[:-4].split(':')
         adate = date[:7]
         if adate.endswith('-'):
             adate =  "%s-0%s" % (adate[:4], adate[5])
-        date = file
         categories = categories.split(',')
         for cat in categories:
-            if categorieslist.has_key(cat):
-                categorieslist[cat][date] = filelist[file]
-            else:
-                categorieslist[cat] = {}
-                categorieslist[cat][date] = filelist[file]
-        if archivelist.has_key(adate):
-            archivelist[adate][date] = filelist[file]
-        else:
-            archivelist[adate] = {}
-            archivelist[adate][date] = filelist[file]
+            if not categorieslist.has_key(cat):
+                categorieslist[cat] = list()
+            categorieslist[cat].append(sfile)
+        if not archivelist.has_key(adate):
+            archivelist[adate] = list()
+        archivelist[adate].append(sfile)
 
     # Compare the index
     newarticles = Set(entries)^Set(indexold)
@@ -1412,12 +1440,9 @@ def main():
             # No old index or new articles in category, update the index
             if not oldcategorieslist or \
                     (oldcategorieslist and \
-                         len(Set(oldcategorieslist.values())\
-                                 ^Set(categorieslist[cat].values())) > 0):
-                catindex = open(os.path.join(indexdir,'%s.index' %cat), 'wb')
-                pickle.dump(categorieslist[cat], catindex)
-                catindex.close()
-
+                         len(Set(oldcategorieslist) \
+                                 ^Set(categorieslist[cat])) > 0):
+                sorted_index_dump(categorieslist[cat], '%s.index' % cat)
         # Pickle the date archives
         for arc in archivelist.keys():
             oldarchivelist = None
@@ -1429,15 +1454,11 @@ def main():
                 pass # :P
             if not oldarchivelist or \
                     (oldarchivelist and \
-                         len(Set(oldarchivelist.values())\
-                                 ^Set(archivelist[arc].values())) > 0):
-                arcindex = open(os.path.join(indexdir,'%s.index' %arc), 'wb')
-                pickle.dump(archivelist[arc], arcindex)
-                arcindex.close()
+                         len(Set(oldarchivelist) \
+                                 ^Set(archivelist[arc])) > 0):
+                sorted_index_dump(archivelist[arc], '%s.index' % arc)
         # Pickle the main index
-        index = open(os.path.join(indexdir,'main.index'), 'wb')
-        pickle.dump(filelist, index)
-        index.close()
+        sorted_index_dump(filelist, 'main.index')
         # Pickle the shorturl index
         generateShortUrlIndex(filelist)
 
