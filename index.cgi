@@ -160,28 +160,36 @@ def dateToString(date):
     return "%s%s" % (strftime(dateformat, date.timetuple()), timeAgo(date))
 
 def generateDate(fileName):
-    name, date, categories = fileName[:-4].split(':')
-    mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime = os.stat(fileName)
-    filedate= datetime(*localtime(mtime)[0:6])
-    date = "%s %s:%s:%s" % (date,
-                            filedate.hour,
-                            filedate.minute,
-                            filedate.second)
-    try:
-        date = datetime(*strptime(
-                date,'%Y-%m-%d %H:%M:%S')[0:6])
-    except:
-        date = filedate
-    # if date collision happens add seconds to date
-    if dates.has_key(date) and not dates[date] == fileName:
-        while dates.has_key(date):
-            date += timedelta(seconds=1)
-    dates[date] = fileName
+    e_split = fileName[:-4].split(':')
+    time_index = e_split[1].find("T")
+
+    if time_index > -1: # filename has also time
+        date = datetime(*strptime(fileName.split(":",1)[1].rsplit(":",1)[0]
+                                  ,'%Y-%m-%dT%H:%M:%S')[0:6])
+    else: # only date, we need to stat the file
+        mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime = \
+            os.stat(fileName)
+        filedate = datetime(*localtime(mtime)[0:6])
+        date = "%s %s:%s:%s" % (e_split[1],
+                                filedate.hour,
+                                filedate.minute,
+                                filedate.second)
+        try:
+            date = datetime(*strptime(
+                    date,'%Y-%m-%d %H:%M:%S')[0:6])
+        except:
+            date = filedate
+        # if date collision happens add seconds to date
+        # FIXME not doing this for files that have time in them?
+        if dates.has_key(date) and not dates[date] == fileName:
+            while dates.has_key(date):
+                date += timedelta(seconds=1)
+        dates[date] = fileName
     return date
 
 def cmp_entry_names(e1, e2):
-    y1, m1, d1 = e1.split(":")[1].split("-")
-    y2, m2, d2 = e2.split(":")[1].split("-")
+    y1, m1, d1 = e1.split(":")[1].split("T")[0].split("-")
+    y2, m2, d2 = e2.split(":")[1].split("T")[0].split("-")
 
     if y1 < y2:
         return -1
@@ -635,7 +643,7 @@ class Entry:
         self.text = self.text[1:]
         self.author = defaultauthor
         self.cat = ''
-        name, date, categories = self.fileName[:-4].split(':')
+        categories = self.fileName[:-4].split(":")[-1]
         self.cat = categories.split(',')
         self.date = generateDate(self.fullPath)
         self.comments = getComments(self.fileName)
@@ -1381,10 +1389,11 @@ def main():
     for entry in files:
         if not entry.endswith(".txt"):
             continue
-        if not len(entry.split(":")) == 3:
+        e_split = entry.split(":")
+        if not (len(e_split) == 3 or len(e_split) == 5):
             continue
         try:
-            year, month, day = entry.split(":")[1].split("-")
+            year, month, day = e_split[1].split("T")[0].split("-")
             if int(year) == 0 or \
                     (int(month) < 1 or int(month) > 12) or \
                     (int(day) < 1 or int(day) > 31):
@@ -1412,8 +1421,9 @@ def main():
     categorieslist = {}
     archivelist = {}
     for sfile in filelist:
-        name, date, categories = sfile[:-4].split(':')
-        adate = date[:7]
+        e_split = sfile[:-4].split(':')
+        adate = e_split[1].split("T")[0][:7]
+        categories = e_split[-1]
         if adate.endswith('-'):
             adate =  "%s-0%s" % (adate[:4], adate[5])
         categories = categories.split(',')
