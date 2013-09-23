@@ -20,26 +20,26 @@ from public web. For example when using Apache webserver create
 
 # Config variables
 # Url of the blog (without trailing /)
-baseurl = 'http://yourdomain/blog/index.cgi'
+baseurl = 'http://blog.timp.com.au'
 # Use absolute url for this, like http://yourdomain/blog/kukka.css
-stylesheet = 'kukka.css'
+stylesheet = 'http://blog.timp.com.au/kukka.css'
 # Use absolute url for this, like http://yourdomain/blog/feed-icon-14x14.png
-feedicon = 'feed-icon-14x14.png'
-blogname = 'Kukkaisvoima'
-slogan = 'Default installation'
-description = "Jee"
+feedicon = 'images/feed-icon-14x14.png'
+blogname = 'Tim\'s Bits and Pieces'
+slogan = 'Kangaroo Writes Blog'
+description = "My personal blog, covering many random topics"
 encoding = 'iso-8859-15'
-defaultauthor = 'You'
-favicon = 'http://yourdomain/favicon.ico'
+defaultauthor = 'TimP'
+favicon = 'http://blog.timp.com.au/favicon.ico'
 doctype = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">'
 # Email to send comments to
-blogemail = 'you@yourdomain'
+blogemail = 'timp@timp.com.au'
 # Language for the feed
 language = 'en'
 # Number of entries per page
 numberofentriesperpage = 10
 # Directory which contains the blog entries
-datadir = '.'
+datadir = 'entries'
 # Directory which contains the index and comments. Must be script
 # writable directory
 indexdir = 'temp'
@@ -50,13 +50,17 @@ maxcomments = 30
 nospamanswer = '5'
 # This is admin password to manage comments. password should be
 # something other than 'password'
-passwd = 'password'
+# Which I've done in a separate file so I can commit this to my GitHub
+# repository
+import sys
+sys.path.append('/home/public/kukkaisvoima')
+from kukka_priv_config import *
 # Entry and comment Date format
 dateformat = "%F %T"
 # Show only first paragraph when showing many entries
-entrysummary = False
+entrysummary = True
 # New in version 15
-shorturl = True
+shorturl = False
 
 # Language variables
 l_archives = 'Archives'
