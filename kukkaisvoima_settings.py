@@ -53,7 +53,7 @@ nospamanswer = '5'
 # Which I've done in a separate file so I can commit this to my GitHub
 # repository
 import sys
-sys.path.append('/home/public/kukkaisvoima')
+sys.path.append('.')
 from kukka_priv_config import *
 # Entry and comment Date format
 dateformat = "%F %T"
